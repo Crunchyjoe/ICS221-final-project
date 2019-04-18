@@ -1,6 +1,7 @@
 const React = require('react');
 const MsgList = require('./MsgList.jsx');
 const NewMsg = require('./NewMsg.jsx');
+const Message = require('./Message.jsx');
 const Login = require('./Login.jsx')
 const Registration = require('../../client_side/Registration.jsx');
 
@@ -9,6 +10,7 @@ class MsgBoard extends React.Component {
         super(props);
         this.state = {
             messages: this.props.messages,
+            loggedIn: false,
             loginForm: true,
             loginAttempts: 3,
             loginFail: false, 
@@ -16,13 +18,18 @@ class MsgBoard extends React.Component {
                 password: '',
                 name: ''
             },
+            userName: '',
             registrationForm: false,
-            registrationFail: false
+            registrationFail: false,
+            messageEditText: "",
+            adminLoggedIn: false
         };
         this.addMessage = this.addMessage.bind(this);
         this.login = this.login.bind(this);
         this.register = this.register.bind(this);
         this.addNewUser = this.addNewUser.bind(this);
+        this.deleteMessage = this.deleteMessage.bind(this);
+        this.editMessage = this.editMessage.bind(this);
     }
 
     componentDidMount() {
@@ -82,8 +89,13 @@ class MsgBoard extends React.Component {
                 this.setState({
                     userCredentials: userCredentials,
                     loginForm: false,
-                    loginFail: false
+                    loginFail: false,
+                    loggedIn: true
                 });
+                if (userCredentials.name == "administrator"){
+                    this.setState({adminLoggedIn: true});
+                    console.log("admin logged in");
+                }
             } else {
         // Credentials are wrong
                 this.setState((state) => {
@@ -93,6 +105,9 @@ class MsgBoard extends React.Component {
                     });
                 });
             }
+        }).then(result => result.json())
+        .then(result => {
+            this.setState({userName: result.username});
         })
         .catch(error => {
             console.log(error);
@@ -103,6 +118,50 @@ class MsgBoard extends React.Component {
         this.setState({
             registrationForm: true
         });
+    }
+
+    deleteMessage(id, username){
+        console.log("username state is: " + this.state.userName);
+        if (this.state.userName){
+            console.log("id at MsgBoard.jsx is: " + id + " username at MsgBoard.jsx is: " + username);
+            if (this.state.userName == username){
+                fetch(`${process.env.API_URL}/msgs/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    //body: JSON.stringify(id)
+                })
+                .then(response => {
+                    this.handleHTTPErrors(response)
+                })
+                .catch(error => {
+                    console.log(error);
+                })
+            }
+        }
+    }
+
+    editMessage(id, username, messageText){
+        if (this.state.userName){
+            if (this.state.userName == username){
+                //this.setState({messageEditText: messageText});
+                console.log("message state at MsgBoard.editMessage is: " + messageText);
+                fetch(`${process.env.API_URL}/msgs/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({messageText : messageText})
+                })
+                .then(response => {
+                    this.handleHTTPErrors(response)
+                })
+                .catch(error => {
+                    console.log(error);
+                })
+            }
+        }
     }
         
     addNewUser(userDetails) {
@@ -152,21 +211,23 @@ class MsgBoard extends React.Component {
             )
         } else {
             let form;
+            console.log("loggedin in msgboard is: " + this.state.loggedIn);
 
             if (this.state.loginForm) {
                 form = <Login registerCallback={this.register}
                 loginCallback={this.login}
                 loginFail={this.state.loginFail}
                 loginAttempts={this.state.loginAttempts}
-                />
+                />;
             } else {
-                form = <NewMsg name={this.state.userCredentials.name} addMsgCallback={this.addMessage} />
+                form = <NewMsg adminLoggedIn={this.state.adminLoggedIn} name={this.state.userCredentials.name} addMsgCallback={this.addMessage} />;
             }
 
             return (
                 <div>
                     {form}
-                    <MsgList messages={this.state.messages} />
+                    <MsgList loggedIn={this.state.loggedIn} editMessageCallback={this.editMessage} 
+                    deleteMessageCallback={this.deleteMessage} messages={this.state.messages} />
                 </div>
             );
         }

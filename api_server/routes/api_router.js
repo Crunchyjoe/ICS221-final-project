@@ -10,6 +10,12 @@ router.get('/users/login', passport.authenticate('basic', {session: false}), use
 
 router.route('/msgs')
 .get(msgAPIController.getAllMessagesOrderedByLastPosted)
-.post(passport.authenticate('basic', { session: false}), msgAPIController.addNewMessage);
+.post(passport.authenticate('basic', { session: false}), msgAPIController.addNewMessage)
+.delete(msgAPIController.deleteAllMessages);
+
+
+router.route('/msgs/:messageid').get(msgAPIController.getSingleMessage)
+.delete(msgAPIController.deleteSingleMessage)
+.put(msgAPIController.editSingleMessage);
 
 module.exports = router;
